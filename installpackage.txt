@@ -1,0 +1,8 @@
+### ~/.local/lib/python3.11
+pip install python-socketio==5.10.0 --break-system-packages
+pip install v4l2py==2.3.0 --break-system-packages
+pip install aiohttp==3.9.0 --break-system-packages
+altgraph==0.17.4/
+async-timeout==4.0.3/
+packaging==23.2/
+websocket-client==1.6.4/
