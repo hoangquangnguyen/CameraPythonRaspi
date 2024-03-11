@@ -26,7 +26,7 @@ async def raspiCamCapture(capProps:CaptureProp):
     server.start()
     picam2.start(config=capture_config,show_preview=False)
 
-async def cameraCapture(sioManager,capProps:CaptureProp):
+async def cameraCapture(sio,capProps:CaptureProp):
     isCapturing=False
     isStartRaspi=False
     #config Raspi
@@ -48,12 +48,13 @@ async def cameraCapture(sioManager,capProps:CaptureProp):
     start = time.monotonic()
     startI=0
     await asyncio.sleep(capProps.waitTime)
-    await sioManager.emit("u_start_capture", "nodata")
+    await sio.emit("u_start_capture", "nodata")
     print("u_start_capture")
     isCapturing=True
     #region loop get frame 
     start = time.monotonic()
     while isStartRaspi==True:
+        await asyncio.sleep(0.01)
         new = time.monotonic()
         elapsed = (new - start)*1000
         if elapsed <= capProps.captureTime*1000 :  
@@ -66,21 +67,19 @@ async def cameraCapture(sioManager,capProps:CaptureProp):
                 dataimg.append(frame)
         else:
             isStartRaspi=False
-            break
-        await asyncio.sleep(0.01)
+        
 
     #endregion loop get frame
-    await asyncio.sleep(0.01)
-    await sioManager.emit("u_capture_complete", "nodata")  
+    await asyncio.sleep(1)
+    await sio.emit("u_capture_complete", "nodata")  
     print("u_capture_complete")      
     for i in range(0,len(dataimg)):
         imgPath="./img/"+"cam"+str(capProps.camId)+"img"+str(i)+".jpg"
         await saveImageFromArray(dataimg[i],imgPath)
     dataimg.clear()
     isCapturing=False  
-    #await sioManager.sio.emit("u_save_image_complete", "nodata")
-    await asyncio.sleep(0.01)
-    await sioManager.emit("u_save_image_complete", "nodata")
+    await asyncio.sleep(0.1)
+    await sio.emit("u_save_image_complete", "nodata")
     picam2.stop()
     picam2.close()
             

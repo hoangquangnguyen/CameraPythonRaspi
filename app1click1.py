@@ -13,11 +13,13 @@ from utils.FileManager import MyReadFile,MyWriteFile,ScanFile,DeleteAllFileInFol
 
 from API.APIUpload import upload
 
+global isConnect
+global isCapturing
 isConnect=False
 isCapturing=False
 sio = socketio.AsyncClient()
 jsonConfig=ReadConfig(MyReadFile('config.txt'))
-
+myCount=0
 #region EVENT
 @sio.event
 async def connect():
@@ -44,6 +46,7 @@ async def server_request_u_change_resolution(data):
         jsonConfig['rWidth']=data['resW']
         jsonConfig['rHeight']=data['resH']
         MyWriteFile('config.txt',JsonToString(jsonConfig))
+        await DeleteAllFileInFolder("img")
     except:
         print("err")
 
@@ -52,6 +55,39 @@ async def server_request_u_change_interval(data):
     try:
         jsonConfig['Interval']=data
         MyWriteFile('config.txt',JsonToString(jsonConfig))
+            #setting camera
+        global picam0 
+        picam0=Picamera2()
+        global capture_config
+        rWidth=jsonConfig['rWidth']
+        rHeigth=jsonConfig['rHeight']
+     
+        capture_config = picam0.create_still_configuration(
+            raw={}, display=None,
+            main={"size": (rWidth,rHeigth)},
+            queue=True) #transform=Transform(vflip=True),
+        # picam0.options["quality"] = 95
+        # picam0.options["compress_level"] = 5
+
+        picam0.start(config=capture_config,show_preview=False)
+        settings={}
+        #focus
+        settings["AfMode"]=controls.AfModeEnum.Continuous
+        settings["AfRange"]=controls.AfRangeEnum.Normal
+        settings["AfMetering"]=controls.AfMeteringEnum.Auto
+        #white balance
+        settings["AwbEnable"]=True
+        settings["AwbMode"]=controls.AwbModeEnum.Auto
+        #settings["ExposureValue"]=0
+        #settings["Sharpness"]=0
+        settings["FrameRate"]=56
+        #settings["HdrMode"]=controls.HdrModeEnum.SingleExposure
+        #
+        # Give time for Aec and Awb to settle, before disabling them
+        time.sleep(1)
+        picam0.set_controls(settings)
+        # And wait for those settings to take effect
+        time.sleep(1)
     except:
         print("err")   
 
@@ -60,6 +96,8 @@ async def server_request_u_change_wait_time(data):
     try:
         jsonConfig['WaitTime']=data
         MyWriteFile('config.txt',JsonToString(jsonConfig))
+        picam0.stop()
+        picam0.close()
     except:
         print("err") 
 
@@ -85,7 +123,6 @@ async def server_request_u_upload(data):
 
 @sio.event
 async def server_request_u_capture(data):
-    await DeleteAllFileInFolder("img")
     asyncio.create_task(cameraCapture())
 
 @sio.event
@@ -143,94 +180,24 @@ async def uploadToServer(server,devicename,folderName):
 
 #region caprure image
 async def cameraCapture():
-    isCapturing=False
-    isStartRaspi=False
-    waittime=jsonConfig['WaitTime']
-    rWidth=jsonConfig['rWidth']
-    rHeigth=jsonConfig['rHeight']
-    capInterval=jsonConfig['Interval']
-    captureTime=jsonConfig['CaptureTime']
-    #config Raspi
-    picam0 = Picamera2(0)
-    picam1=Picamera2(1)
-        #setting camera
-    capture_config = picam0.create_still_configuration(
-        main={"size": (rWidth,rHeigth)},
-        queue=True) #transform=Transform(vflip=True),
-    picam0.options["quality"] = 95
-    picam0.options["compress_level"] = 5
-
-    capture_config1 = picam1.create_still_configuration(
-        main={"size": (rWidth,rHeigth)},       
-        queue=True) 
-    picam1.options["quality"] = 95
-    picam1.options["compress_level"] = 5
-
-    picam0.start(config=capture_config,show_preview=False)
-    picam1.start(config=capture_config1,show_preview=False)
-    settings={}
-    #focus
-    settings["AfMode"]=controls.AfModeEnum.Continuous
-    settings["AfRange"]=controls.AfRangeEnum.Normal
-    settings["AfMetering"]=controls.AfMeteringEnum.Auto
-    #white balance
-    settings["AwbEnable"]=True
-    settings["AwbMode"]=controls.AwbModeEnum.Auto
-    #settings["ExposureValue"]=0
-    #settings["Sharpness"]=0
-    settings["FrameRate"]=56
-    #settings["HdrMode"]=controls.HdrModeEnum.SingleExposure
-    #
-    # Give time for Aec and Awb to settle, before disabling them
-    time.sleep(1)
-    picam0.set_controls(settings)
-    picam1.set_controls(settings)
-    # And wait for those settings to take effect
-    time.sleep(1)
+    global myCount
     isStartRaspi=True
-    dataimg0=[]
-    dataimg1=[]
-    
-    startI=0
     #region loop get frame 
-    await asyncio.sleep(waittime)
     isCapturing=True
-    start = last = time.monotonic()
     await sio.emit("u_start_capture", "nodata")
-    while isStartRaspi==True:
-        new = time.monotonic()
-        await asyncio.sleep(0.01)
-        elapsed = (new - start)*1000   
-        if elapsed <= captureTime*1000 :
-            frame0 = picam0.capture_array()
-            frame1 = picam1.capture_array()                       
-            if capInterval>0:
-                if(elapsed-startI>=capInterval*1000):
-                    dataimg0.append(frame0)
-                    dataimg0.append(frame1)
-                    startI=elapsed
-            else:
-                dataimg0.append(frame0)
-                dataimg0.append(frame1)
-        else:
-            isStartRaspi=False
+    # capture_config = picam0.create_still_configuration(raw={"size":(4608,2592)}, display=None,controls={"AfMode": controls.AfModeEnum.Continuous})
+    # r = picam0.switch_mode_capture_request_and_stop(capture_config)
+    # r.save_dng("img/full1.dng")
+    frame0 = picam0.capture_array()
+    
     #endregion loop get frame
     await asyncio.sleep(0.1)
     await sio.emit("u_capture_complete", "nodata")
-    for i in range(0,len(dataimg0)):
-        await asyncio.create_task(saveImage(dataimg0[i],i,0))
-        #await saveImage(dataimg[i],i)
-    for i in range(0,len(dataimg1)):
-        await asyncio.create_task(saveImage(dataimg0[i],i,1))
-    dataimg0.clear()
-    dataimg1.clear()
+    await asyncio.create_task(saveImage(frame0,myCount,0))
+    myCount+=1
     isCapturing=False
     await asyncio.sleep(0.1)
     await sio.emit("u_save_image_complete", "nodata")
-    picam0.stop()
-    picam0.close()
-    picam1.stop()
-    picam1.close()
 #endregion capture image
 
 

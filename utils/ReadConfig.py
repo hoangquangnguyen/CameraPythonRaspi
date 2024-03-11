@@ -10,14 +10,14 @@ def JsonToString(data):
 def ReadConfig2CapProp(data):
     jsonConfig=json.loads(data)
     capProps=CaptureProp()
-    capProps.camId=0
-    capProps.serverUrl=jsonConfig['server']
-    capProps.waitTime=jsonConfig['waittime']
-    capProps.rWidth=jsonConfig['resW']
-    capProps.rHeight=jsonConfig['resH']
-    capProps.captureInterval=jsonConfig['interval']
-    capProps.deviceName=jsonConfig['devicename']
-    capProps.captureTime= jsonConfig['capturetime']
+    capProps.CamId=0
+    capProps.ServerUrl=jsonConfig['Server']
+    capProps.WaitTime=jsonConfig['WaitTime']
+    capProps.rWidth=jsonConfig['rWidth']
+    capProps.rHeight=jsonConfig['rHeight']
+    capProps.captureInterval=jsonConfig['Interval']
+    capProps.deviceName=jsonConfig['DeviceName']
+    capProps.captureTime= jsonConfig['CaptureTime']
     return capProps
 
     

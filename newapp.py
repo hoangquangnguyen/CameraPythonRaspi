@@ -151,21 +151,21 @@ async def cameraCapture():
     capInterval=jsonConfig['interval']
     captureTime=jsonConfig['capturetime']
     #config Raspi
-    picam2 = Picamera2()
+    picam0 = Picamera2(0)
         #setting camera
-    capture_config = picam2.create_still_configuration(
+    capture_config = picam0.create_still_configuration(
         main={"size": (rWidth,rHeigth)},
         transform=Transform(vflip=True),
         queue=True,
         controls={"AfMode": controls.AfModeEnum.Continuous,"Brightness":0.05}) 
-    picam2.set_controls({"FrameRate": 56})
-    picam2.options["quality"] = 95
-    picam2.options["compress_level"] = 0
+    picam0.set_controls({"FrameRate": 56})
+    picam0.options["quality"] = 95
+    picam0.options["compress_level"] = 0
 
-    picam2.start(config=capture_config,show_preview=False)
+    picam0.start(config=capture_config,show_preview=False)
     #
     isStartRaspi=True
-    dataimg=[]
+    dataimg0=[]
     
     startI=0
     #region loop get frame 
@@ -178,25 +178,27 @@ async def cameraCapture():
         await asyncio.sleep(0.01)
         elapsed = (new - start)*1000   
         if elapsed <= captureTime*1000 :
-            frame = picam2.capture_array()                       
+            frame0 = picam0.capture_array()                       
             if capInterval>0:
                 if(elapsed-startI>=capInterval*1000):
-                    dataimg.append(frame)
+                    dataimg0.append(frame0)
                     startI=elapsed
             else:
-                dataimg.append(frame)
+                dataimg0.append(frame0)
         else:
             isStartRaspi=False
     #endregion loop get frame
+    await asyncio.sleep(0.1)
     await sio.emit("u_capture_complete", "nodata")
-    for i in range(0,len(dataimg)):
-        #await asyncio.create_task(saveImage(dataimg[i],i))
-        await saveImage(dataimg[i],i)
-    dataimg.clear()
+    for i in range(0,len(dataimg0)):
+        await asyncio.create_task(saveImage(dataimg0[i],i))
+        #await saveImage(dataimg[i],i)
+    dataimg0.clear()
     isCapturing=False
+    await asyncio.sleep(0.1)
     await sio.emit("u_save_image_complete", "nodata")
-    picam2.stop()
-    picam2.close()
+    picam0.stop()
+    picam0.close()
 #endregion capture image
 
 
