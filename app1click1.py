@@ -66,8 +66,8 @@ async def server_request_u_change_interval(data):
             raw={}, display=None,
             main={"size": (rWidth,rHeigth)},
             queue=True) #transform=Transform(vflip=True),
-        # picam0.options["quality"] = 95
-        # picam0.options["compress_level"] = 5
+        picam0.options["quality"] = 95
+        picam0.options["compress_level"] = 5
 
         picam0.start(config=capture_config,show_preview=False)
         settings={}
