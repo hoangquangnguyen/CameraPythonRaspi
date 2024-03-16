@@ -1,1 +1,1 @@
-{"DeviceName": "D2", "Server": "http://192.168.1.11:3333", "CamId": 2, "rWidth": 4608, "rHeight": 2592, "WaitTime": 1, "Interval": 0.2, "CaptureTime": 5, "Focus": 65}
+{"devicename": "D2", "server": "http://192.168.1.11:3333", "camid": 2, "focus": 65, "resW": 3840, "resH": 2160, "waittime": 5, "interval": 0.2, "capturetime": 10}

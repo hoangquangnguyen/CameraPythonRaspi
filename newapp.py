@@ -7,6 +7,9 @@ from picamera2 import Picamera2
 from libcamera import controls
 from libcamera import Transform
 import socketio
+from sys import getsizeof
+from memory_profiler import profile 
+from collections import deque
 
 from utils.ReadConfig import ReadConfig,JsonToString
 from utils.FileManager import MyReadFile,MyWriteFile,ScanFile,DeleteAllFileInFolder
@@ -16,7 +19,7 @@ from API.APIUpload import upload
 isConnect=False
 isCapturing=False
 sio = socketio.AsyncClient()
-jsonConfig=ReadConfig(MyReadFile('config.txt'))
+jsonConfig=ReadConfig(MyReadFile('oldconfig.txt'))
 
 #region EVENT
 @sio.event
@@ -142,6 +145,7 @@ async def uploadToServer(server,devicename,folderName):
     
 
 #region caprure image
+@profile
 async def cameraCapture():
     isCapturing=False
     isStartRaspi=False
@@ -165,7 +169,8 @@ async def cameraCapture():
     picam0.start(config=capture_config,show_preview=False)
     #
     isStartRaspi=True
-    dataimg0=[]
+    
+    dataimg=[]
     
     startI=0
     #region loop get frame 
@@ -173,27 +178,31 @@ async def cameraCapture():
     isCapturing=True
     start = last = time.monotonic()
     await sio.emit("u_start_capture", "nodata")
+    index=0
     while isStartRaspi==True:
         new = time.monotonic()
         await asyncio.sleep(0.01)
         elapsed = (new - start)*1000   
         if elapsed <= captureTime*1000 :
-            frame0 = picam0.capture_array()                       
+            # picam0.capture_array()                       
             if capInterval>0:
                 if(elapsed-startI>=capInterval*1000):
-                    dataimg0.append(frame0)
+                    dataimg.append(picam0.capture_array())
                     startI=elapsed
+                    index+=1
             else:
-                dataimg0.append(frame0)
+                dataimg.append(picam0.capture_array())
+                startI=elapsed
+                index+=1
         else:
             isStartRaspi=False
     #endregion loop get frame
     await asyncio.sleep(0.1)
     await sio.emit("u_capture_complete", "nodata")
-    for i in range(0,len(dataimg0)):
-        await asyncio.create_task(saveImage(dataimg0[i],i))
-        #await saveImage(dataimg[i],i)
-    dataimg0.clear()
+    for i in range(0,len(dataimg)):
+        await asyncio.create_task(saveImage(dataimg.pop(0),i))
+   
+    dataimg.clear()
     isCapturing=False
     await asyncio.sleep(0.1)
     await sio.emit("u_save_image_complete", "nodata")

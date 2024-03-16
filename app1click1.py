@@ -20,6 +20,10 @@ isCapturing=False
 sio = socketio.AsyncClient()
 jsonConfig=ReadConfig(MyReadFile('config.txt'))
 myCount=0
+global picam0
+picam0=Picamera2()
+picam0.stop()
+picam0.close()
 #region EVENT
 @sio.event
 async def connect():
@@ -57,8 +61,10 @@ async def server_request_u_change_interval(data):
         MyWriteFile('config.txt',JsonToString(jsonConfig))
             #setting camera
         global picam0 
-        picam0=Picamera2()
         global capture_config
+        if picam0.is_open==False:
+            picam0=Picamera2()
+        
         rWidth=jsonConfig['rWidth']
         rHeigth=jsonConfig['rHeight']
      
@@ -139,21 +145,6 @@ async def connect_error(data):
     print("The connection failed!")
 #endregion
 
-
-async def checkSocketIOConnect():
-    while True:        
-        try:
-            if isConnect==False and isCapturing==False:
-                print("try reconnect1")
-                await sio.connect(url=jsonConfig['Server'],wait=True,wait_timeout=60)
-                print("try reconnect2")
-                #await sio.wait()
-                #print("try reconnect3")
-            await asyncio.sleep(1)
-        except:
-            print("Unclosed client session")           
-        finally:
-            await asyncio.sleep(2)  
             
 async def saveImage(frame,x,camid):
     #buff = BytesIO(bytes(frame))
@@ -201,7 +192,26 @@ async def cameraCapture():
 #endregion capture image
 
 
-
+async def checkSocketIOConnect():
+    while True:        
+        try:           
+            if isConnect==False and isCapturing==False:
+                print("try reconnect1")
+                await sio.connect(url=jsonConfig['Server'],wait=True,wait_timeout=60)
+                print("try reconnect2")
+                #await sio.wait()
+                #print("try reconnect3")
+            if picam0.is_open==True :
+                await sio.emit("u_camera_status", 1)
+            else:
+                await sio.emit("u_camera_status", 0)
+            await asyncio.sleep(1)
+        except Exception as ex:
+            print(ex)
+            print("Unclosed client session")     
+            await asyncio.sleep(1)      
+        finally:
+            await asyncio.sleep(2)  
 #################################################################################
 #MAIN
     

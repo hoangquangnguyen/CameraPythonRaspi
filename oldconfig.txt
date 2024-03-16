@@ -1,0 +1,1 @@
+{"devicename": "D2", "server": "http://192.168.1.11:3333", "camid": 2, "focus": 65, "resW": 4608, "resH": 2592, "waittime": 2, "interval": 0.3, "capturetime": 40}
