@@ -72,7 +72,10 @@ async def server_request_u_onoff_camera(data):
             #setting camera
             global picam0 
             global capture_config
-            picam0=Picamera2() 
+            global picam1
+            global capture_config1
+            picam0=Picamera2(0) 
+            picam1=Picamera2(1) 
             
             rWidth=config.rWidth
             rHeigth=config.rHeight
@@ -81,8 +84,14 @@ async def server_request_u_onoff_camera(data):
                 queue=True) #transform=Transform(vflip=True),
             picam0.options["quality"] = 95
             picam0.options["compress_level"] = 5
+            capture_config1 = picam1.create_still_configuration(
+                main={"size": (rWidth,rHeigth)},
+                queue=True) #transform=Transform(vflip=True),
+            picam1.options["quality"] = 95
+            picam1.options["compress_level"] = 5
 
             picam0.start(config=capture_config,show_preview=False)
+            picam1.start(config=capture_config1,show_preview=False)
             settings={}
             #focus
             settings["AfMode"]=controls.AfModeEnum.Continuous
@@ -99,6 +108,7 @@ async def server_request_u_onoff_camera(data):
             # Give time for Aec and Awb to settle, before disabling them
             time.sleep(1)
             picam0.set_controls(settings)
+            picam1.set_controls(settings)
             # And wait for those settings to take effect
             time.sleep(1)
         except:
@@ -107,6 +117,8 @@ async def server_request_u_onoff_camera(data):
         try:
             picam0.stop()
             picam0.close()
+            picam1.stop()
+            picam1.close()
         except:
             print("err off camera")
 
